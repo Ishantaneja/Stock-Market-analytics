@@ -1,13 +1,16 @@
 import os
 from datetime import datetime
+
 import pandas as pd
 import yfinance as yf
 from sqlalchemy import create_engine
 
-DATABASE_URL = os.getenv("DATABASE_URL")
-
-if not DATABASE_URL:
-    raise ValueError("DATABASE_URL environment variable not found")
+# Local fallback for testing
+# In GitHub Actions, DATABASE_URL secret will automatically override this
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    "postgresql://neondb_owner:npg_GVAuC4DUhLQ6@ep-soft-cake-addafwxu-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+)
 
 stocks = [
     "RELIANCE.NS",
@@ -54,11 +57,13 @@ if not data:
 
 df = pd.DataFrame(data)
 
+# Create database connection
 engine = create_engine(DATABASE_URL)
 
+# Insert data into PostgreSQL
 df.to_sql(
     "stock_prices",
-    engine,
+    con=engine,
     if_exists="append",
     index=False
 )
