@@ -5,12 +5,10 @@ import pandas as pd
 import yfinance as yf
 from sqlalchemy import create_engine
 
-# Local fallback for testing
-# In GitHub Actions, DATABASE_URL secret will automatically override this
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    #"postgresql://neondb_owner:npg_GVAuC4DUhLQ6@ep-soft-cake-addafwxu-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
-)
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+if not DATABASE_URL:
+    raise ValueError("DATABASE_URL is not set.")
 
 stocks = [
     "RELIANCE.NS",
@@ -24,20 +22,26 @@ data = []
 
 for stock in stocks:
     try:
-        ticker = yf.Ticker(stock)
 
         hist = yf.download(
-    stock,
-    period="5d",
-    interval="5m",
-    progress=False,
-    auto_adjust=False,
-    threads=False
-)
+            stock,
+            period="5d",
+            interval="5m",
+            progress=False,
+            auto_adjust=False,
+            threads=False
+        )
+
+        print(f"\n===== {stock} =====")
+        print(hist.tail())
 
         if hist.empty:
             print(f"No data found for {stock}")
             continue
+
+        # Flatten MultiIndex columns if present
+        if isinstance(hist.columns, pd.MultiIndex):
+            hist.columns = hist.columns.get_level_values(0)
 
         latest = hist.iloc[-1]
 
@@ -51,7 +55,7 @@ for stock in stocks:
             "volume": int(latest["Volume"])
         })
 
-        print(f"Fetched data for {stock}")
+        print(f"Fetched {stock}")
 
     except Exception as e:
         print(f"Error fetching {stock}: {e}")
@@ -62,10 +66,10 @@ if not data:
 
 df = pd.DataFrame(data)
 
-# Create database connection
+print(df)
+
 engine = create_engine(DATABASE_URL)
 
-# Insert data into PostgreSQL
 df.to_sql(
     "stock_prices",
     con=engine,
@@ -73,9 +77,4 @@ df.to_sql(
     index=False
 )
 
-print(f"Inserted {len(df)} records successfully")
-
-print(f"\nTicker: {stock}")
-print(hist.head())
-print(hist.tail())
-print(hist.empty)
+print(f"Inserted {len(df)} records successfully.")
