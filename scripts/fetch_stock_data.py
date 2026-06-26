@@ -26,10 +26,14 @@ for stock in stocks:
     try:
         ticker = yf.Ticker(stock)
 
-        hist = ticker.history(
-            period="1d",
-            interval="5m"
-        )
+        hist = yf.download(
+    stock,
+    period="5d",
+    interval="5m",
+    progress=False,
+    auto_adjust=False,
+    threads=False
+)
 
         if hist.empty:
             print(f"No data found for {stock}")
@@ -53,7 +57,8 @@ for stock in stocks:
         print(f"Error fetching {stock}: {e}")
 
 if not data:
-    raise Exception("No stock data fetched")
+    print("No stock data fetched.")
+    exit(0)
 
 df = pd.DataFrame(data)
 
@@ -69,3 +74,8 @@ df.to_sql(
 )
 
 print(f"Inserted {len(df)} records successfully")
+
+print(f"\nTicker: {stock}")
+print(hist.head())
+print(hist.tail())
+print(hist.empty)
